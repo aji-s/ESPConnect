@@ -18,29 +18,26 @@
             </v-btn>
           </v-card-title>
 
-          <v-system-bar
-            class="status-bar mb-4"
-            color="surface-variant"
-            :height="64"
-            window
-          >
-            <div class="d-flex align-center gap-2 flex-wrap">
+          <v-system-bar class="status-bar mb-4" color="surface-variant" :height="64" window>
+            <div class="status-actions">
               <v-btn
                 color="primary"
-                variant="flat"
+                variant="tonal"
                 density="comfortable"
                 :disabled="!serialSupported || connected || busy"
                 @click="connect"
+                class="status-button"
               >
                 <v-icon start>mdi-usb-flash-drive</v-icon>
                 Connect
               </v-btn>
               <v-btn
-                color="secondary"
-                variant="outlined"
+                color="error"
+                variant="tonal"
                 density="comfortable"
                 :disabled="!connected || busy"
                 @click="disconnect"
+                class="status-button"
               >
                 <v-icon start>mdi-close-circle</v-icon>
                 Disconnect
@@ -1158,13 +1155,25 @@ onBeforeUnmount(() => {
   border: 1px solid color-mix(in srgb, var(--v-theme-on-surface) 8%, transparent);
 }
 
-.status-bar .v-btn {
-  min-width: 130px;
+.status-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.status-button {
+  min-width: 140px;
+}
+
+.status-button.v-btn--disabled {
+  opacity: 0.45;
+  filter: grayscale(0.35);
 }
 
 .status-select {
-  min-width: 170px;
-  max-width: 200px;
+  min-width: 180px;
+  max-width: 220px;
 }
 
 .status-bar .v-divider {
