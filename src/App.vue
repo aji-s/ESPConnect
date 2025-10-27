@@ -60,11 +60,20 @@
             <v-spacer />
             <v-chip
               :color="connected ? 'success' : 'grey-darken-1'"
-              :prepend-icon="connected ? 'mdi-usb-port' : 'mdi-usb-off'"
               class="text-capitalize"
               variant="elevated"
               density="comfortable"
             >
+              <template #prepend>
+                <v-icon v-if="connected">mdi-usb-port</v-icon>
+                <v-avatar
+                  v-else
+                  size="22"
+                  class="status-logo-avatar"
+                >
+                  <v-img :src="disconnectedLogo" alt="Disconnected status logo" />
+                </v-avatar>
+              </template>
               {{ connected ? 'Connected' : 'Disconnected' }}
             </v-chip>
           </v-system-bar>
@@ -325,6 +334,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { ESPLoader, Transport } from 'esptool-js';
 import { useTheme } from 'vuetify';
+import disconnectedLogo from './assets/disconnected-logo.svg';
 
 const SUPPORTED_VENDORS = [
   { usbVendorId: 0x303a },
@@ -1180,6 +1190,15 @@ onBeforeUnmount(() => {
   border-color: rgba(255, 255, 255, 0.35) !important;
   color: rgba(255, 255, 255, 0.5) !important;
   background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.status-logo-avatar {
+  background: transparent;
+  padding: 2px;
+}
+
+.status-logo-avatar :deep(.v-img__img) {
+  object-fit: contain;
 }
 
 .status-select {
