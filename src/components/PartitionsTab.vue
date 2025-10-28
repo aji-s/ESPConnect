@@ -198,6 +198,9 @@ defineProps({
 .partition-label {
   font-weight: 600;
   font-size: 0.9rem;
+  text-align: center;
+  display: block;
+  width: 100%;
 }
 
 .partition-meta {
