@@ -150,10 +150,10 @@
                 We couldn't communicate with the board. Try putting your ESP32 into bootloader mode:
               </p>
               <ol class="text-body-2 ps-4">
-                <li>Hold the <strong>BOOT</strong> (GPIO0) button.</li>
-                <li>Tap <strong>RESET</strong>, then release it.</li>
-                <li>Release the BOOT button after one second.</li>
-                <li>Click <strong>Connect</strong> again.</li>
+                <li>Press and hold the <strong>BOOT</strong> (GPIO0) button and keep it held down.</li>
+                <li>Tap <strong>RESET</strong>, then release only the RESET button.</li>
+                <li>While still holding BOOT, click <strong>Connect</strong>.</li>
+                <li>Release the BOOT button once the log shows the ESP-ROM banner or the connection completes.</li>
               </ol>
               <p class="text-caption text-medium-emphasis" v-if="lastErrorMessage">
                 Last error: {{ lastErrorMessage }}
