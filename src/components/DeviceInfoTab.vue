@@ -1,6 +1,6 @@
 <template>
-  <v-expand-transition>
-    <div v-if="details" class="device-info-wrapper">
+  <v-expand-transition v-if="details">
+    <div class="device-info-wrapper">
       <v-card class="device-card" elevation="0" variant="flat">
         <v-card-text class="device-card__body">
           <div class="device-header">
@@ -142,6 +142,23 @@
       </v-card>
     </div>
   </v-expand-transition>
+  <v-expand-transition v-else>
+    <div class="device-info-empty">
+      <v-card class="device-empty-card" variant="tonal">
+        <v-card-text class="device-empty-card__body">
+          <v-avatar class="device-empty-card__avatar" size="70">
+            <v-icon size="34">mdi-usb-port</v-icon>
+          </v-avatar>
+          <div class="device-empty-card__text">
+            <div class="device-empty-card__title">No device connected</div>
+            <div class="device-empty-card__subtitle">
+              Connect to an ESP32 to see device information.
+            </div>
+          </div>
+        </v-card-text>
+      </v-card>
+    </div>
+  </v-expand-transition>
 </template>
 
 <script setup>
@@ -268,6 +285,45 @@ const featurePreview = computed(() => {
   background: color-mix(in srgb, var(--v-theme-primary) 28%, transparent);
   color: color-mix(in srgb, var(--v-theme-primary) 85%, var(--v-theme-on-surface) 50%);
   box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
+}
+
+.device-info-empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 320px;
+}
+
+.device-empty-card {
+  border-radius: 18px;
+  padding: 32px 36px;
+  border: 1px dashed color-mix(in srgb, var(--v-theme-primary) 20%, transparent);
+  background: color-mix(in srgb, var(--v-theme-surface) 94%, transparent);
+  text-align: center;
+  max-width: 420px;
+}
+
+.device-empty-card__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.device-empty-card__avatar {
+  background: color-mix(in srgb, var(--v-theme-primary) 18%, transparent);
+  color: color-mix(in srgb, var(--v-theme-primary) 80%, var(--v-theme-on-surface) 30%);
+}
+
+.device-empty-card__title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--v-theme-on-surface) 92%, transparent);
+}
+
+.device-empty-card__subtitle {
+  font-size: 0.92rem;
+  color: color-mix(in srgb, var(--v-theme-on-surface) 65%, transparent);
 }
 
 .device-header__text {
