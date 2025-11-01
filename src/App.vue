@@ -4,9 +4,9 @@
       <v-container class="py-10" max-width="1100">
         <v-card elevation="8" class="pa-6">
           <v-card-title class="d-flex align-center pa-0 mb-1">
-            <div class="app-title text-h5 font-weight-semibold">
+            <div class="text-h5 font-weight-semibold">
               ESPConnect
-              <span class="app-version">v{{ APP_VERSION }}</span>
+              <span>v{{ APP_VERSION }}</span>
             </div>
           </v-card-title>
           <v-card-subtitle class="pa-0 text-body-2 text-medium-emphasis mb-3">
@@ -2390,12 +2390,6 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: baseline;
   gap: 8px;
-}
-
-.app-version {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: color-mix(in srgb, var(--v-theme-primary) 75%, var(--v-theme-on-surface) 25%);
 }
 
 .status-bar {
