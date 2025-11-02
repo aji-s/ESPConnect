@@ -1,42 +1,18 @@
 ﻿<template>
   <v-app>
-    <v-navigation-drawer
-      permanent
-      app
-      elevation="1"
-    >
-      <v-sheet class="app-drawer__hero" color="transparent" elevation="3">
-        <div class="app-drawer__hero-icon">
-          <v-avatar color="primary" variant="tonal" size="52">
-            <v-icon size="30">mdi-transit-connection-variant</v-icon>
-          </v-avatar>
-        </div>
-        <div class="app-drawer__hero-body">
-          <div class="app-drawer__hero-header">
-            <span class="app-drawer__name">{{ APP_NAME }}</span>
-            <v-chip size="small" color="primary" class="app-drawer__chip" label>
-              v{{ APP_VERSION }}
-            </v-chip>
-          </div>
-          <p class="app-drawer__tagline text-body-2">
-            {{ APP_TAGLINE }}
-          </p>
-        </div>
-      </v-sheet>
-      <v-list nav density="comfortable" >
+    <v-navigation-drawer permanent app elevation="1">
+      <v-list>
+        <v-list-item prepend-icon="mdi-transit-connection-variant"
+        :title=" 'ESPConnect v'+ APP_VERSION"
+        :subtitle="APP_TAGLINE">
+        </v-list-item>
+      </v-list>
+      <v-list nav density="comfortable">
         <v-list-subheader class="app-drawer__label text-overline text-medium-emphasis">
           Sections
         </v-list-subheader>
-        <v-list-item
-          v-for="item in navigationItems"
-          :key="item.value"
-          :value="item.value"
-          :prepend-icon="item.icon"
-          :active="activeTab === item.value"
-          class="app-drawer__list-item"
-          rounded="lg"
-          @click="activeTab = item.value"
-        >
+        <v-list-item v-for="item in navigationItems" :key="item.value" :value="item.value" :prepend-icon="item.icon"
+          :active="activeTab === item.value" class="app-drawer__list-item" rounded="lg" @click="activeTab = item.value">
           <v-list-item-title>{{ item.title }}</v-list-item-title>
         </v-list-item>
       </v-list>
@@ -45,93 +21,41 @@
         <v-list-subheader class="app-drawer__label text-overline text-medium-emphasis">
           Resources
         </v-list-subheader>
-        <v-list-item
-          v-for="link in resourceLinks"
-          :key="link.href"
-          :href="link.href"
-          :prepend-icon="link.icon"
-          target="_blank"
-          rel="noopener"
-          class="app-drawer__list-item"
-          rounded="lg"
-        >
+        <v-list-item v-for="link in resourceLinks" :key="link.href" :href="link.href" :prepend-icon="link.icon"
+          target="_blank" rel="noopener" class="app-drawer__list-item" rounded="lg">
           <v-list-item-title>{{ link.title }}</v-list-item-title>
         </v-list-item>
       </v-list>
     </v-navigation-drawer>
-    <v-app-bar
-      class="status-bar"
-      color="transparent"
-      app
-      flat
-      height="80"
-    >
+    <v-app-bar class="status-bar" color="transparent" app flat height="80">
       <v-container class="status-bar__container" max-width="1100">
         <div class="status-actions">
-          <v-btn
-            :class="['status-button', { 'status-button--active': !connected && !busy }]"
-            color="primary"
-            variant="outlined"
-            density="comfortable"
-            :disabled="!serialSupported || connected || busy"
-            @click="connect"
-          >
+          <v-btn :class="['status-button', { 'status-button--active': !connected && !busy }]" color="primary"
+            variant="outlined" density="comfortable" :disabled="!serialSupported || connected || busy" @click="connect">
             <v-icon start>mdi-usb-flash-drive</v-icon>
             Connect
           </v-btn>
-          <v-btn
-            :class="['status-button', { 'status-button--active': connected }]"
-            color="error"
-            variant="outlined"
-            density="comfortable"
-            :disabled="!connected || busy"
-            @click="disconnect"
-          >
+          <v-btn :class="['status-button', { 'status-button--active': connected }]" color="error" variant="outlined"
+            density="comfortable" :disabled="!connected || busy" @click="disconnect">
             <v-icon start>mdi-close-circle</v-icon>
             Disconnect
           </v-btn>
-          <v-select
-            v-model="selectedBaud"
-            :items="baudrateOptions"
-            label="Baud rate"
-            density="compact"
-            variant="outlined"
-            hide-details
-            class="status-select"
-            :disabled="busy || flashInProgress || maintenanceBusy || baudChangeBusy || monitorActive"
-          />
+          <v-select v-model="selectedBaud" :items="baudrateOptions" label="Baud rate" density="compact"
+            variant="outlined" hide-details class="status-select"
+            :disabled="busy || flashInProgress || maintenanceBusy || baudChangeBusy || monitorActive" />
         </div>
         <v-spacer />
-        <v-btn
-          :title="`Switch to ${isDarkTheme ? 'light' : 'dark'} theme`"
-          variant="text"
-          icon
-          color="surface"
-          size="small"
-          class="status-theme-toggle"
-          @click="toggleTheme"
-        >
+        <v-btn :title="`Switch to ${isDarkTheme ? 'light' : 'dark'} theme`" variant="text" icon color="surface"
+          size="small" class="status-theme-toggle" @click="toggleTheme">
           <v-icon>{{ themeIcon }}</v-icon>
         </v-btn>
-        <v-chip
-          :color="connected ? 'success' : 'grey-darken-1'"
-          class="text-capitalize"
-          variant="elevated"
-          density="comfortable"
-        >
+        <v-chip :color="connected ? 'success' : 'grey-darken-1'" class="text-capitalize" variant="elevated"
+          density="comfortable">
           <template #prepend>
-            <v-icon
-              v-if="connected"
-              start
-              class="status-chip-icon status-chip-icon--connected"
-            >
+            <v-icon v-if="connected" start class="status-chip-icon status-chip-icon--connected">
               mdi-usb-port
             </v-icon>
-            <v-icon
-              v-else
-              start
-              class="status-chip-icon status-chip-icon--disconnected"
-            >
+            <v-icon v-else start class="status-chip-icon status-chip-icon--disconnected">
               mdi-usb-c-port
             </v-icon>
           </template>
@@ -142,13 +66,7 @@
     <v-main>
       <v-container class="py-10" max-width="1100">
         <v-card elevation="8" class="pa-6">
-          <v-alert
-            v-if="!serialSupported"
-            type="error"
-            class="mb-4"
-            variant="tonal"
-            icon="mdi-alert-circle-outline"
-          >
+          <v-alert v-if="!serialSupported" type="error" class="mb-4" variant="tonal" icon="mdi-alert-circle-outline">
             This browser does not support the Web Serial API. Use Chrome, Edge, or another Chromium-based browser.
           </v-alert>
 
@@ -156,121 +74,67 @@
 
           <v-window v-model="activeTab" class="app-tab-content">
             <v-window-item value="info">
-              <DeviceInfoTab
-                :chip-details="chipDetails"
-              />
+              <DeviceInfoTab :chip-details="chipDetails" />
             </v-window-item>
 
             <v-window-item value="partitions">
-              <PartitionsTab
-                :partition-segments="partitionSegments"
-                :formatted-partitions="formattedPartitions"
-                :unused-summary="unusedFlashSummary"
-              />
+              <PartitionsTab :partition-segments="partitionSegments" :formatted-partitions="formattedPartitions"
+                :unused-summary="unusedFlashSummary" />
             </v-window-item>
 
             <v-window-item value="flash">
-              <FlashFirmwareTab
-                v-model:flash-offset="flashOffset"
-                v-model:selected-preset="selectedPreset"
-                v-model:erase-flash="eraseFlash"
-                :offset-presets="offsetPresets"
-                :busy="busy"
-                :can-flash="canFlash"
-                :flash-in-progress="flashInProgress"
-                :flash-progress="flashProgress"
-                :flash-progress-dialog="flashProgressDialog"
-                :maintenance-busy="maintenanceBusy"
-                :register-address="registerAddress"
-                :register-value="registerValue"
-                :register-read-result="registerReadResult"
-                :register-status="registerStatus"
-                :register-status-type="registerStatusType"
-                :register-options="registerOptions"
-                :register-reference="registerReference"
-                :md5-offset="md5Offset"
-                :md5-length="md5Length"
-                :md5-result="md5Result"
-                :md5-status="md5Status"
-                :md5-status-type="md5StatusType"
-                :flash-read-offset="flashReadOffset"
-                :flash-read-length="flashReadLength"
-                :flash-read-status="flashReadStatus"
-                :flash-read-status-type="flashReadStatusType"
-                :partition-options="partitionDownloadOptions"
-                :selected-partition="selectedPartitionDownload"
-                :integrity-partition="integrityPartition"
-                :spiffs-agent-status="spiffsAgent"
-                :download-progress="downloadProgress"
-                @firmware-input="handleFirmwareInput"
-                @flash="flashFirmware"
-                @apply-preset="applyOffsetPreset"
-                @update:register-address="value => (registerAddress.value = value)"
-                @update:register-value="value => (registerValue.value = value)"
-                @read-register="handleReadRegister"
-                @write-register="handleWriteRegister"
-                @update:md5-offset="value => (md5Offset.value = value)"
-                @update:md5-length="value => (md5Length.value = value)"
-                @compute-md5="handleComputeMd5"
+              <FlashFirmwareTab v-model:flash-offset="flashOffset" v-model:selected-preset="selectedPreset"
+                v-model:erase-flash="eraseFlash" :offset-presets="offsetPresets" :busy="busy" :can-flash="canFlash"
+                :flash-in-progress="flashInProgress" :flash-progress="flashProgress"
+                :flash-progress-dialog="flashProgressDialog" :maintenance-busy="maintenanceBusy"
+                :register-address="registerAddress" :register-value="registerValue"
+                :register-read-result="registerReadResult" :register-status="registerStatus"
+                :register-status-type="registerStatusType" :register-options="registerOptions"
+                :register-reference="registerReference" :md5-offset="md5Offset" :md5-length="md5Length"
+                :md5-result="md5Result" :md5-status="md5Status" :md5-status-type="md5StatusType"
+                :flash-read-offset="flashReadOffset" :flash-read-length="flashReadLength"
+                :flash-read-status="flashReadStatus" :flash-read-status-type="flashReadStatusType"
+                :partition-options="partitionDownloadOptions" :selected-partition="selectedPartitionDownload"
+                :integrity-partition="integrityPartition" :spiffs-agent-status="spiffsAgent"
+                :download-progress="downloadProgress" @firmware-input="handleFirmwareInput" @flash="flashFirmware"
+                @apply-preset="applyOffsetPreset" @update:register-address="value => (registerAddress.value = value)"
+                @update:register-value="value => (registerValue.value = value)" @read-register="handleReadRegister"
+                @write-register="handleWriteRegister" @update:md5-offset="value => (md5Offset.value = value)"
+                @update:md5-length="value => (md5Length.value = value)" @compute-md5="handleComputeMd5"
                 @update:flash-read-offset="value => (flashReadOffset.value = value)"
                 @update:flash-read-length="value => (flashReadLength.value = value)"
                 @update:selected-partition="handleSelectPartition"
-                @update:integrity-partition="handleSelectIntegrityPartition"
-                @load-spiffs-agent="handleLoadSpiffsAgent"
-                @deploy-spiffs-agent="handleDeploySpiffsAgent"
-                @spiffs-list="handleListSpiffsFiles"
-                @spiffs-delete="handleDeleteSpiffsFile"
-                @spiffs-upload="handleUploadSpiffsFile"
-                @spiffs-download="handleDownloadSpiffsFile"
-                @spiffs-format="handleFormatSpiffsAgent"
-                @spiffs-reset="handleResetSpiffsAgent"
-                @download-flash="handleDownloadFlash"
-                @download-partition="handleDownloadPartition"
-                @download-all-partitions="handleDownloadAllPartitions"
-                @download-used-flash="handleDownloadUsedFlash"
-                @cancel-flash="handleCancelFlash"
-                @erase-flash="handleEraseFlash"
-                @cancel-download="handleCancelDownload"
-                @select-register="handleSelectRegister"
-              />
+                @update:integrity-partition="handleSelectIntegrityPartition" @load-spiffs-agent="handleLoadSpiffsAgent"
+                @deploy-spiffs-agent="handleDeploySpiffsAgent" @spiffs-list="handleListSpiffsFiles"
+                @spiffs-delete="handleDeleteSpiffsFile" @spiffs-upload="handleUploadSpiffsFile"
+                @spiffs-download="handleDownloadSpiffsFile" @spiffs-format="handleFormatSpiffsAgent"
+                @spiffs-reset="handleResetSpiffsAgent" @download-flash="handleDownloadFlash"
+                @download-partition="handleDownloadPartition" @download-all-partitions="handleDownloadAllPartitions"
+                @download-used-flash="handleDownloadUsedFlash" @cancel-flash="handleCancelFlash"
+                @erase-flash="handleEraseFlash" @cancel-download="handleCancelDownload"
+                @select-register="handleSelectRegister" />
             </v-window-item>
 
             <v-window-item value="console">
-              <SerialMonitorTab
-                :monitor-text="monitorText"
-                :monitor-active="monitorActive"
-                :monitor-error="monitorError"
-                :can-start="canStartMonitor"
-                :can-command="canIssueMonitorCommands"
-                @start-monitor="startMonitor"
-                @stop-monitor="stopMonitor"
-                @clear-monitor="clearMonitorOutput"
-                @reset-board="resetBoard"
-              />
+              <SerialMonitorTab :monitor-text="monitorText" :monitor-active="monitorActive"
+                :monitor-error="monitorError" :can-start="canStartMonitor" :can-command="canIssueMonitorCommands"
+                @start-monitor="startMonitor" @stop-monitor="stopMonitor" @clear-monitor="clearMonitorOutput"
+                @reset-board="resetBoard" />
             </v-window-item>
 
             <v-window-item value="log">
-              <SessionLogTab
-                :log-text="logText"
-                @clear-log="clearLog"
-              />
+              <SessionLogTab :log-text="logText" @clear-log="clearLog" />
             </v-window-item>
           </v-window>
         </v-card>
 
-        <v-dialog
-          :model-value="confirmationDialog.visible"
-          max-width="420"
-          @update:model-value="value => {
-            if (!value) resolveConfirmation(false);
-          }"
-        >
+        <v-dialog :model-value="confirmationDialog.visible" max-width="420" @update:model-value="value => {
+          if (!value) resolveConfirmation(false);
+        }">
           <v-card>
             <v-card-title class="text-h6">
-              <v-icon
-                start
-                :color="confirmationDialog.destructive ? 'error' : 'warning'"
-              >mdi-alert-circle-outline</v-icon>
+              <v-icon start
+                :color="confirmationDialog.destructive ? 'error' : 'warning'">mdi-alert-circle-outline</v-icon>
               {{ confirmationDialog.title || 'Please confirm' }}
             </v-card-title>
             <v-card-text class="text-body-2">
@@ -280,17 +144,11 @@
             </v-card-text>
             <v-card-actions>
               <v-spacer />
-              <v-btn
-                variant="text"
-                @click="resolveConfirmation(false)"
-              >
+              <v-btn variant="text" @click="resolveConfirmation(false)">
                 {{ confirmationDialog.cancelText || 'Cancel' }}
               </v-btn>
-              <v-btn
-                :color="confirmationDialog.destructive ? 'error' : 'primary'"
-                variant="tonal"
-                @click="resolveConfirmation(true)"
-              >
+              <v-btn :color="confirmationDialog.destructive ? 'error' : 'primary'" variant="tonal"
+                @click="resolveConfirmation(true)">
                 {{ confirmationDialog.confirmText || 'Continue' }}
               </v-btn>
             </v-card-actions>
@@ -342,7 +200,7 @@ import SerialMonitorTab from './components/SerialMonitorTab.vue';
 import registerGuides from './data/register-guides.json';
 
 const APP_NAME = 'ESPConnect';
-const APP_VERSION = '0.1';
+const APP_VERSION = '1.00';
 const APP_TAGLINE = 'Flash, back up, and troubleshoot your ESP32 straight from the browser.';
 
 const SUPPORTED_VENDORS = [
@@ -357,32 +215,32 @@ const DEBUG_SERIAL = false;
 
 const PACKAGE_LABELS = {
   ESP32: pkgVersion =>
-    ({
-      0: 'ESP32-D0WDQ6',
-      1: 'ESP32-D0WD',
-      2: 'ESP32-D2WD',
-      4: 'ESP32-U4WDH',
-      5: 'ESP32-PICO-D4',
-      6: 'ESP32-PICO-V3-02',
-    }[pkgVersion] ?? null),
+  ({
+    0: 'ESP32-D0WDQ6',
+    1: 'ESP32-D0WD',
+    2: 'ESP32-D2WD',
+    4: 'ESP32-U4WDH',
+    5: 'ESP32-PICO-D4',
+    6: 'ESP32-PICO-V3-02',
+  }[pkgVersion] ?? null),
   'ESP32-C3': pkgVersion =>
-    ({
-      0: 'ESP32-C3 (QFN32)',
-      1: 'ESP8685 (QFN28)',
-      2: 'ESP32-C3 (AZ QFN32)',
-      3: 'ESP8686 (QFN24)',
-    }[pkgVersion] ?? null),
+  ({
+    0: 'ESP32-C3 (QFN32)',
+    1: 'ESP8685 (QFN28)',
+    2: 'ESP32-C3 (AZ QFN32)',
+    3: 'ESP8686 (QFN24)',
+  }[pkgVersion] ?? null),
   'ESP32-S3': pkgVersion =>
-    ({
-      0: 'ESP32-S3 (QFN56)',
-      1: 'ESP32-S3-PICO-1 (LGA56)',
-    }[pkgVersion] ?? null),
+  ({
+    0: 'ESP32-S3 (QFN56)',
+    1: 'ESP32-S3-PICO-1 (LGA56)',
+  }[pkgVersion] ?? null),
   'ESP32-S2': pkgVersion =>
-    ({
-      0: 'ESP32-S2',
-      1: 'ESP32-S2FH2',
-      2: 'ESP32-S2FH4',
-    }[pkgVersion] ?? null),
+  ({
+    0: 'ESP32-S2',
+    1: 'ESP32-S2FH2',
+    2: 'ESP32-S2FH4',
+  }[pkgVersion] ?? null),
 };
 
 const ECO_LABELS = {
@@ -1452,11 +1310,11 @@ const formattedPartitions = computed(() => {
     const sizeText = formatBytes(entry.size) ?? `${entry.size} bytes`;
     const fallbackColor =
       partitionColorOverrides[
-        (entry.label || '')
-          .trim()
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '_')
-          .replace(/^_+|_+$/g, '')
+      (entry.label || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
       ] ||
       partitionTypeColors[entry.type] ||
       partitionPalette[index % partitionPalette.length];
@@ -1820,18 +1678,18 @@ async function disconnectTransport() {
   } catch (error) {
     console.warn('Error disconnecting transport', error);
   } finally {
-      transport.value = null;
-      currentPort.value = null;
-      loader.value = null;
-      connected.value = false;
-      chipDetails.value = null;
-      flashSizeBytes.value = null;
-      monitorError.value = null;
-      monitorText.value = '';
-      monitorAutoResetPerformed = false;
-      resetMaintenanceState();
-      currentBaud.value = DEFAULT_ROM_BAUD;
-      baudChangeBusy.value = false;
+    transport.value = null;
+    currentPort.value = null;
+    loader.value = null;
+    connected.value = false;
+    chipDetails.value = null;
+    flashSizeBytes.value = null;
+    monitorError.value = null;
+    monitorText.value = '';
+    monitorAutoResetPerformed = false;
+    resetMaintenanceState();
+    currentBaud.value = DEFAULT_ROM_BAUD;
+    baudChangeBusy.value = false;
   }
 }
 
@@ -1920,20 +1778,20 @@ async function connect() {
         .toString(16)
         .padStart(6, '0')
         .toUpperCase()}` : 'n/a'} (manuf=0x${Number.isInteger(manufacturerCode)
-        ? manufacturerCode.toString(16).toUpperCase().padStart(2, '0')
-        : '??'}, type=0x${Number.isInteger(memoryTypeCode)
-        ? memoryTypeCode.toString(16).toUpperCase().padStart(2, '0')
-        : '??'}, cap=0x${Number.isInteger(capacityCodeRaw)
-        ? capacityCodeRaw.toString(16).toUpperCase().padStart(2, '0')
-        : '??'})`,
+          ? manufacturerCode.toString(16).toUpperCase().padStart(2, '0')
+          : '??'}, type=0x${Number.isInteger(memoryTypeCode)
+            ? memoryTypeCode.toString(16).toUpperCase().padStart(2, '0')
+            : '??'}, cap=0x${Number.isInteger(capacityCodeRaw)
+              ? capacityCodeRaw.toString(16).toUpperCase().padStart(2, '0')
+              : '??'})`,
       '[debug]'
     );
 
     const featureList = Array.isArray(featuresRaw)
       ? featuresRaw
       : typeof featuresRaw === 'string'
-      ? featuresRaw.split(/,\s*/)
-      : [];
+        ? featuresRaw.split(/,\s*/)
+        : [];
     let flashBytesValue = null;
     let flashLabelSuffix = '';
     if (typeof flashSizeKb === 'number' && flashSizeKb > 0) {
@@ -1954,9 +1812,9 @@ async function connect() {
             `Flash size detection fallback: using JEDEC capacity code 0x${candidate
               .toString(16)
               .toUpperCase()} from flash ID 0x${flashId
-              ?.toString(16)
-              .padStart(6, '0')
-              .toUpperCase()}.`,
+                ?.toString(16)
+                .padStart(6, '0')
+                .toUpperCase()}.`,
             '[warn]'
           );
           break;
@@ -1973,8 +1831,8 @@ async function connect() {
           .toString(16)
           .padStart(6, '0')
           .toUpperCase()} (manuf=0x${toHexByte(manufacturerCode)}, type=0x${toHexByte(
-          memoryTypeCode
-        )}, cap=0x${toHexByte(capacityCodeRaw)}).`,
+            memoryTypeCode
+          )}, cap=0x${toHexByte(capacityCodeRaw)}).`,
         '[warn]'
       );
     }
@@ -2482,10 +2340,10 @@ async function downloadFlashRegion(offset, length, options = {}) {
       if (chunkBuffer.length !== currentChunkSize) {
         throw new Error(
           'Incomplete flash chunk (expected ' +
-            currentChunkSize +
-            ' bytes, received ' +
-            chunkBuffer.length +
-            ').'
+          currentChunkSize +
+          ' bytes, received ' +
+          chunkBuffer.length +
+          ').'
         );
       }
       chunkBuffers.push(chunkBuffer);
@@ -2503,10 +2361,10 @@ async function downloadFlashRegion(offset, length, options = {}) {
     if (totalReceived !== length) {
       throw new Error(
         'Incomplete flash read (expected ' +
-          length +
-          ' bytes, received ' +
-          totalReceived +
-          ').'
+        length +
+        ' bytes, received ' +
+        totalReceived +
+        ').'
       );
     }
 
@@ -3504,11 +3362,9 @@ onBeforeUnmount(() => {
 <style scoped>
 .status-bar {
   backdrop-filter: blur(22px);
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--v-theme-surface) 88%, transparent) 0%,
-    color-mix(in srgb, var(--v-theme-surface) 70%, #04070c 30%) 100%
-  );
+  background: linear-gradient(90deg,
+      color-mix(in srgb, var(--v-theme-surface) 88%, transparent) 0%,
+      color-mix(in srgb, var(--v-theme-surface) 70%, #04070c 30%) 100%);
   border-bottom: 1px solid color-mix(in srgb, var(--v-theme-primary) 18%, transparent);
   box-shadow:
     0 18px 26px rgba(15, 23, 42, 0.24),
@@ -3575,11 +3431,9 @@ onBeforeUnmount(() => {
 
 .app-drawer {
   border-right: 1px solid color-mix(in srgb, var(--v-theme-primary) 10%, transparent);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--v-theme-surface) 88%, #000000 12%) 0%,
-    color-mix(in srgb, var(--v-theme-surface) 70%, #020202 30%) 100%
-  );
+  background: linear-gradient(180deg,
+      color-mix(in srgb, var(--v-theme-surface) 88%, #000000 12%) 0%,
+      color-mix(in srgb, var(--v-theme-surface) 70%, #020202 30%) 100%);
 }
 
 .app-drawer :deep(.v-navigation-drawer__content) {
@@ -3599,11 +3453,9 @@ onBeforeUnmount(() => {
   padding: 22px 20px;
   border-radius: 22px;
   backdrop-filter: blur(18px);
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--v-theme-primary) 16%, transparent) 0%,
-    color-mix(in srgb, var(--v-theme-primary) 46%, #0b0b0f 34%) 100%
-  );
+  background: linear-gradient(135deg,
+      color-mix(in srgb, var(--v-theme-primary) 16%, transparent) 0%,
+      color-mix(in srgb, var(--v-theme-primary) 46%, #0b0b0f 34%) 100%);
   border: 1px solid color-mix(in srgb, var(--v-theme-primary) 25%, transparent);
   box-shadow:
     0 18px 32px rgba(15, 23, 42, 0.28),
@@ -3627,11 +3479,9 @@ onBeforeUnmount(() => {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(
-    circle at 18% 12%,
-    color-mix(in srgb, var(--v-theme-primary) 60%, transparent) 0%,
-    transparent 55%
-  );
+  background: radial-gradient(circle at 18% 12%,
+      color-mix(in srgb, var(--v-theme-primary) 60%, transparent) 0%,
+      transparent 55%);
   opacity: 0.6;
   pointer-events: none;
 }
@@ -3707,5 +3557,4 @@ onBeforeUnmount(() => {
   background-color: color-mix(in srgb, var(--v-theme-primary) 18%, transparent);
   color: color-mix(in srgb, var(--v-theme-primary) 80%, #ffffff 20%);
 }
-
 </style>
