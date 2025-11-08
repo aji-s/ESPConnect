@@ -96,7 +96,24 @@
             </v-window-item>
 
             <v-window-item value="littlefs">
-              <LittleFsTools v-if="connected && littleFsAvailable" :partitions="littleFsPartitions" />
+              <SpiffsManagerTab v-if="connected && littleFsAvailable" :partitions="littleFsPartitions"
+                :selected-partition-id="littlefsState.selectedId" :files="littlefsState.files"
+                :status="littlefsState.status" :loading="littlefsState.loading" :busy="littlefsState.busy"
+                :saving="littlefsState.saving" :read-only="littlefsState.readOnly"
+                :read-only-reason="littlefsState.readOnlyReason" :dirty="littlefsState.dirty"
+                :backup-done="littlefsState.backupDone || littlefsState.sessionBackupDone"
+                :error="littlefsState.error" :has-partition="hasLittlefsPartitionSelected"
+                :has-client="Boolean(littlefsState.client)" :usage="littlefsState.usage"
+                :upload-blocked="littlefsState.uploadBlocked"
+                :upload-blocked-reason="littlefsState.uploadBlockedReason" fs-label="LittleFS"
+                partition-title="LittleFS Partition"
+                empty-state-message="No LittleFS files found. Read the partition or upload to begin."
+                :enable-preview="false" :enable-download="false"
+                @select-partition="handleSelectLittlefsPartition" @refresh="handleRefreshLittlefs"
+                @backup="handleLittlefsBackup" @restore="handleLittlefsRestore"
+                @download-file="handleLittlefsDownloadFile" @view-file="handleLittlefsView"
+                @validate-upload="handleLittlefsUploadSelection" @upload-file="handleLittlefsUpload"
+                @delete-file="handleLittlefsDelete" @format="handleLittlefsFormat" @save="handleLittlefsSave" />
               <DisconnectedState v-else icon="mdi-alpha-l-circle-outline" :min-height="420"
                 subtitle="Connect to an ESP32 with a LittleFS partition to use these tools." />
             </v-window-item>
@@ -177,7 +194,79 @@
               </v-btn>
             </v-card-actions>
           </v-card>
-        </v-dialog>
+          </v-dialog>
+
+          <v-dialog :model-value="littlefsBackupDialog.visible" persistent max-width="420" class="progress-dialog">
+            <v-card>
+              <v-card-title class="text-h6">
+                <v-icon start color="primary">mdi-content-save</v-icon>
+                LittleFS Backup
+              </v-card-title>
+              <v-card-text class="progress-dialog__body">
+                <div class="progress-dialog__label">
+                  {{ littlefsBackupDialog.label || 'Preparing backup...' }}
+                </div>
+                <v-progress-linear :model-value="littlefsBackupDialog.value" height="24" color="primary" rounded>
+                  <strong>{{ Math.min(100, Math.max(0, Math.floor(littlefsBackupDialog.value))) }}%</strong>
+                </v-progress-linear>
+              </v-card-text>
+              <v-card-actions>
+                <v-spacer />
+                <v-btn variant="text" @click="cancelLittlefsBackup">
+                  Cancel
+                </v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-dialog>
+
+          <v-dialog :model-value="littlefsLoadingDialog.visible" persistent max-width="420" class="progress-dialog">
+            <v-card>
+              <v-card-title class="text-h6">
+                <v-icon start color="primary">mdi-folder-sync</v-icon>
+                Loading LittleFS
+              </v-card-title>
+              <v-card-text class="progress-dialog__body">
+                <div class="progress-dialog__label">
+                  {{ littlefsLoadingDialog.label }}
+                </div>
+                <v-progress-linear indeterminate height="24" color="primary" rounded />
+              </v-card-text>
+            </v-card>
+          </v-dialog>
+
+          <v-dialog :model-value="littlefsSaveDialog.visible" persistent max-width="420" class="progress-dialog">
+            <v-card>
+              <v-card-title class="text-h6">
+                <v-icon start color="primary">mdi-floppy</v-icon>
+                Saving LittleFS
+              </v-card-title>
+              <v-card-text class="progress-dialog__body">
+                <div class="progress-dialog__label">
+                  {{ littlefsSaveDialog.label || 'Writing LittleFS image...' }}
+                </div>
+                <v-progress-linear :model-value="littlefsSaveDialog.value" height="24" color="primary" rounded>
+                  <strong>{{ Math.min(100, Math.max(0, Math.floor(littlefsSaveDialog.value))) }}%</strong>
+                </v-progress-linear>
+              </v-card-text>
+            </v-card>
+          </v-dialog>
+
+          <v-dialog :model-value="littlefsRestoreDialog.visible" persistent max-width="420" class="progress-dialog">
+            <v-card>
+              <v-card-title class="text-h6">
+                <v-icon start color="primary">mdi-backup-restore</v-icon>
+                Restoring LittleFS
+              </v-card-title>
+              <v-card-text class="progress-dialog__body">
+                <div class="progress-dialog__label">
+                  {{ littlefsRestoreDialog.label || 'Writing LittleFS image...' }}
+                </div>
+                <v-progress-linear :model-value="littlefsRestoreDialog.value" height="24" color="primary" rounded>
+                  <strong>{{ Math.min(100, Math.max(0, Math.floor(littlefsRestoreDialog.value))) }}%</strong>
+                </v-progress-linear>
+              </v-card-text>
+            </v-card>
+          </v-dialog>
 
         <v-dialog :model-value="spiffsBackupDialog.visible" persistent max-width="420" class="progress-dialog">
           <v-card>
@@ -356,7 +445,6 @@ import DeviceInfoTab from './components/DeviceInfoTab.vue';
 import FlashFirmwareTab from './components/FlashFirmwareTab.vue';
 import AppsTab from './components/AppsTab.vue';
 import SpiffsManagerTab from './components/SpiffsManagerTab.vue';
-import LittleFsTools from './components/LittleFsTools.vue';
 import PartitionsTab from './components/PartitionsTab.vue';
 import SessionLogTab from './components/SessionLogTab.vue';
 import SerialMonitorTab from './components/SerialMonitorTab.vue';
@@ -422,6 +510,9 @@ const SPIFFS_AUDIO_MIME_MAP = {
 };
 const SPIFFS_VIEWER_MAX_BYTES = 2 * 1024 * 1024; // 2 MB previews
 const SPIFFS_VIEWER_DECODER = new TextDecoder('utf-8', { fatal: false, ignoreBOM: true });
+const LITTLEFS_DEFAULT_BLOCK_SIZE = 4096;
+const LITTLEFS_BLOCK_SIZE_CANDIDATES = [4096, 2048, 1024, 512];
+const LITTLEFS_WASM_ENTRY = '/wasm/littlefs/index.js';
 
 const PACKAGE_LABELS = {
   ESP32: pkgVersion =>
@@ -494,6 +585,7 @@ const APP_DESCRIPTOR_LENGTH = 0x100;
 const APP_SCAN_LENGTH = 0x10000; // 64 KB
 const OTA_SELECT_ENTRY_SIZE = 32;
 const asciiDecoder = new TextDecoder('utf-8');
+let littlefsModulePromise = null;
 
 const JEDEC_MANUFACTURERS = {
   0x01: 'Spansion / Cypress',
@@ -663,6 +755,461 @@ function sortFacts(facts) {
   });
 }
 
+async function loadLittlefsModule() {
+  if (!littlefsModulePromise) {
+    littlefsModulePromise = import(
+      /* @vite-ignore */ LITTLEFS_WASM_ENTRY
+    ).catch(error => {
+      littlefsModulePromise = null;
+      throw error;
+    });
+  }
+  return littlefsModulePromise;
+}
+
+function normalizeLittlefsEntries(entries) {
+  if (!Array.isArray(entries)) {
+    return [];
+  }
+  return entries
+    .map(entry => ({
+      name: entry?.name ?? entry?.path ?? '',
+      size: Number(entry?.size ?? 0) || 0,
+    }))
+    .filter(file => file.name);
+}
+
+function hasLittlefsBackup() {
+  return Boolean(littlefsState.backupDone || littlefsState.sessionBackupDone);
+}
+
+function markLittlefsDirty(message) {
+  littlefsState.dirty = true;
+  if (message) {
+    littlefsState.status = message;
+  }
+}
+
+async function ensureLittlefsReady(options = {}) {
+  if (!connected.value || !littleFsAvailable.value) {
+    return;
+  }
+  const partition = littlefsSelectedPartition.value ?? littleFsPartitions.value[0];
+  if (!partition) {
+    return;
+  }
+  if (!littlefsState.selectedId) {
+    littlefsState.selectedId = partition.id;
+  }
+  if (littlefsState.loading || littlefsState.busy || littlefsState.saving) {
+    return;
+  }
+  if (options.force || !littlefsState.client || littlefsState.selectedId !== partition.id) {
+    await loadLittlefsPartition(partition);
+  }
+}
+
+async function loadLittlefsPartition(partition) {
+  if (!loader.value || !partition) {
+    littlefsState.error = 'Connect to a device with a LittleFS partition first.';
+    return;
+  }
+  littlefsState.selectedId = partition.id;
+  littlefsState.loading = true;
+  littlefsState.error = null;
+  littlefsState.readOnly = false;
+  littlefsState.readOnlyReason = '';
+  littlefsState.status = `Reading LittleFS @ 0x${partition.offset.toString(16).toUpperCase()}...`;
+  littlefsLoadingDialog.visible = true;
+  littlefsLoadingDialog.label = `Reading ${partition.label || 'LittleFS'}...`;
+  try {
+    await releaseTransportReader();
+    const image = await loader.value.readFlash(partition.offset, partition.size);
+    const module = await loadLittlefsModule();
+    const createLittleFSFromImage =
+      typeof module.createLittleFSFromImage === 'function' ? module.createLittleFSFromImage : null;
+    if (!createLittleFSFromImage) {
+      throw new Error('LittleFS module is missing createLittleFSFromImage(). Update the WASM bundle.');
+    }
+    let client = null;
+    let lastError = null;
+    for (const candidateSize of LITTLEFS_BLOCK_SIZE_CANDIDATES) {
+      if (partition.size % candidateSize !== 0) {
+        continue;
+      }
+      try {
+        const blockCount = partition.size / candidateSize;
+        client = await createLittleFSFromImage(image, {
+          blockSize: candidateSize,
+          blockCount,
+        });
+        littlefsState.blockSize = candidateSize;
+        littlefsState.blockCount = blockCount;
+        break;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    if (!client) {
+      littlefsState.client = null;
+      littlefsState.files = [];
+      littlefsState.baselineFiles = [];
+      littlefsState.readOnly = true;
+      littlefsState.readOnlyReason = 'LittleFS image unreadable (unsupported layout or encrypted).';
+      littlefsState.status = 'LittleFS is read-only.';
+      littlefsState.error = formatErrorMessage(lastError);
+      updateLittlefsUsage(partition);
+      return;
+    }
+    littlefsState.client = client;
+    const entries = client.list?.() ?? [];
+    littlefsState.files = normalizeLittlefsEntries(entries);
+    littlefsState.baselineFiles = littlefsState.files.map(file => ({ ...file }));
+    littlefsState.dirty = false;
+    littlefsState.backupDone = false;
+    littlefsState.sessionBackupDone = false;
+    updateLittlefsUsage(partition);
+    const count = littlefsState.files.length;
+    littlefsState.status = count === 1 ? 'Loaded 1 file.' : `Loaded ${count} files.`;
+    appendLog(
+      `LittleFS partition ${partition.label} loaded (${count} file${count === 1 ? '' : 's'}).`,
+      '[debug]'
+    );
+  } catch (error) {
+    littlefsState.client = null;
+    littlefsState.files = [];
+    littlefsState.baselineFiles = [];
+    littlefsState.blockCount = 0;
+    updateLittlefsUsage(partition);
+    littlefsState.error = formatErrorMessage(error);
+    littlefsState.readOnly = true;
+    littlefsState.readOnlyReason = 'LittleFS image unreadable.';
+    littlefsState.status = 'LittleFS is read-only.';
+  } finally {
+    littlefsState.loading = false;
+    littlefsLoadingDialog.visible = false;
+  }
+}
+
+async function refreshLittlefsListing() {
+  if (!littlefsState.client) {
+    return;
+  }
+  const entries = littlefsState.client.list?.() ?? [];
+  littlefsState.files = normalizeLittlefsEntries(entries);
+  updateLittlefsUsage();
+}
+
+function handleSelectLittlefsPartition(partitionId) {
+  if (littlefsState.loading || littlefsState.busy || littlefsState.saving) {
+    return;
+  }
+  littlefsState.selectedId = partitionId;
+  littlefsState.client = null;
+  littlefsState.files = [];
+  littlefsState.status = 'Loading LittleFS...';
+  const partition = littleFsPartitions.value.find(entry => entry.id === partitionId) ?? littleFsPartitions.value[0];
+  if (partition) {
+    void loadLittlefsPartition(partition);
+  }
+}
+
+async function handleRefreshLittlefs() {
+  const partition = littlefsSelectedPartition.value;
+  if (!partition) {
+    return;
+  }
+  await loadLittlefsPartition(partition);
+}
+
+async function handleLittlefsBackup() {
+  const partition = littlefsSelectedPartition.value;
+  if (!partition) {
+    littlefsState.status = 'Select a LittleFS partition first.';
+    return;
+  }
+  if (!loader.value) {
+    littlefsState.status = 'Connect to a device first.';
+    return;
+  }
+  littlefsBackupDialog.visible = true;
+  littlefsBackupDialog.value = 0;
+  littlefsBackupDialog.label = 'Preparing backup...';
+  try {
+    const baseLabel = `${partition.label || 'littlefs'}_${partition.offset.toString(16)}`;
+    const safeBase = sanitizeFileName(baseLabel, 'littlefs');
+    const stampedName = `${safeBase}_${formatBackupTimestamp()}.bin`;
+    await downloadFlashRegion(partition.offset, partition.size, {
+      label: `${partition.label || 'LittleFS'} partition`,
+      fileName: stampedName,
+      suppressStatus: true,
+      onProgress: progress => {
+        littlefsBackupDialog.value = progress.value ?? 0;
+        littlefsBackupDialog.label = progress.label || 'Backing up LittleFS...';
+      },
+    });
+    littlefsState.backupDone = true;
+    littlefsState.sessionBackupDone = true;
+    littlefsState.status = 'Backup downloaded. You can now save changes.';
+    appendLog('LittleFS backup downloaded.', '[debug]');
+  } catch (error) {
+    littlefsState.error = formatErrorMessage(error);
+    littlefsState.status = 'LittleFS backup failed.';
+  } finally {
+    littlefsBackupDialog.visible = false;
+    littlefsBackupDialog.value = 0;
+    littlefsBackupDialog.label = '';
+  }
+}
+
+function cancelLittlefsBackup() {
+  if (!littlefsBackupDialog.visible) {
+    return;
+  }
+  littlefsBackupDialog.label = 'Stopping backup...';
+  handleCancelDownload();
+}
+
+async function handleLittlefsRestore(file) {
+  const partition = littlefsSelectedPartition.value;
+  if (!partition) return;
+  if (!file) return;
+  const buffer = new Uint8Array(await file.arrayBuffer());
+  if (buffer.length !== partition.size) {
+    littlefsState.status = `Restore file must be exactly ${formatBytes(partition.size) ?? `${partition.size} bytes`}.`;
+    return;
+  }
+  const confirmed = await showConfirmation({
+    title: 'Restore LittleFS Partition',
+    message: 'This will overwrite the entire LittleFS partition with the selected image. Continue?',
+    confirmText: 'Restore',
+    destructive: true,
+  });
+  if (!confirmed) {
+    return;
+  }
+  try {
+    littlefsState.saving = true;
+    maintenanceBusy.value = true;
+    littlefsRestoreDialog.visible = true;
+    littlefsRestoreDialog.value = 0;
+    littlefsRestoreDialog.label = 'Writing LittleFS image...';
+    await writeFilesystemImage(partition, buffer, {
+      label: 'LittleFS',
+      state: littlefsState,
+      onProgress: progress => {
+        littlefsRestoreDialog.value = progress.value ?? 0;
+        littlefsRestoreDialog.label = progress.label || 'Writing LittleFS image...';
+      },
+    });
+    littlefsState.status = 'LittleFS image restored.';
+    littlefsState.backupDone = true;
+    appendLog('LittleFS partition restored from backup.', '[debug]');
+    await loadLittlefsPartition(partition);
+  } catch (error) {
+    littlefsState.error = formatErrorMessage(error);
+    littlefsState.status = 'LittleFS restore failed.';
+  } finally {
+    littlefsState.saving = false;
+    maintenanceBusy.value = false;
+    littlefsRestoreDialog.visible = false;
+    littlefsRestoreDialog.value = 0;
+    littlefsRestoreDialog.label = 'Restoring LittleFS image...';
+  }
+}
+
+function handleLittlefsUploadSelection(file) {
+  if (!file || !littlefsState.client) {
+    littlefsState.uploadBlocked = false;
+    littlefsState.uploadBlockedReason = '';
+    return;
+  }
+  const partition = littlefsSelectedPartition.value;
+  const partitionSize = partition?.size ?? littlefsState.blockSize * littlefsState.blockCount;
+  const usedBytes = littlefsState.files.reduce((sum, entry) => sum + (entry.size ?? 0), 0);
+  const existingSize = littlefsState.files.find(entry => entry.name === file.name)?.size ?? 0;
+  const availableBytes = partitionSize ? partitionSize - usedBytes + existingSize : 0;
+  if (partitionSize && file.size > availableBytes) {
+    const message =
+      'Not enough LittleFS space for this file. Delete files or format the partition, then try again.';
+    littlefsState.uploadBlocked = true;
+    littlefsState.uploadBlockedReason = message;
+    littlefsState.status = message;
+    return;
+  }
+  littlefsState.uploadBlocked = false;
+  littlefsState.uploadBlockedReason = '';
+}
+
+async function handleLittlefsUpload({ file }) {
+  if (!littlefsState.client) return;
+  if (littlefsState.readOnly) {
+    littlefsState.status = littlefsState.readOnlyReason || 'LittleFS is read-only.';
+    return;
+  }
+  if (littlefsState.uploadBlocked) {
+    littlefsState.status = littlefsState.uploadBlockedReason || 'Resolve blocked upload before continuing.';
+    return;
+  }
+  if (!file) {
+    littlefsState.status = 'Select a file to upload.';
+    return;
+  }
+  const targetName = (file.name || '').trim();
+  if (!targetName) {
+    littlefsState.status = 'Selected file has no name. Rename it and try again.';
+    return;
+  }
+  try {
+    littlefsState.busy = true;
+    const data = new Uint8Array(await file.arrayBuffer());
+    littlefsState.client.addFile(targetName, data);
+    await refreshLittlefsListing();
+    markLittlefsDirty(`Staged ${targetName}. Remember to Save.`);
+    appendLog(`LittleFS staged ${targetName} (${data.length.toLocaleString()} bytes).`, '[debug]');
+  } catch (error) {
+    littlefsState.error = formatErrorMessage(error);
+  } finally {
+    littlefsState.busy = false;
+  }
+}
+
+async function handleLittlefsDelete(name) {
+  if (!littlefsState.client || littlefsState.readOnly) {
+    return;
+  }
+  const confirmed = await showConfirmation({
+    title: 'Delete File',
+    message: `Delete ${name} from LittleFS? This cannot be undone.`,
+    confirmText: 'Delete',
+    destructive: true,
+  });
+  if (!confirmed) {
+    return;
+  }
+  try {
+    littlefsState.busy = true;
+    littlefsState.client.deleteFile(name);
+    await refreshLittlefsListing();
+    markLittlefsDirty(`${name} deleted. Save to persist.`);
+    appendLog(`LittleFS staged deletion of ${name}.`, '[debug]');
+  } catch (error) {
+    littlefsState.error = formatErrorMessage(error);
+  } finally {
+    littlefsState.busy = false;
+  }
+}
+
+async function handleLittlefsFormat() {
+  if (!littlefsState.client || littlefsState.readOnly) {
+    return;
+  }
+  const confirmed = await showConfirmation({
+    title: 'Format LittleFS',
+    message: 'Erase all files from the LittleFS image? You must Save to apply.',
+    confirmText: 'Format',
+    destructive: true,
+  });
+  if (!confirmed) return;
+  try {
+    littlefsState.busy = true;
+    littlefsState.client.format();
+    await refreshLittlefsListing();
+    markLittlefsDirty('LittleFS formatted. Save to apply.');
+    appendLog('LittleFS staged format operation.', '[debug]');
+  } catch (error) {
+    littlefsState.error = formatErrorMessage(error);
+  } finally {
+    littlefsState.busy = false;
+  }
+}
+
+async function handleLittlefsSave() {
+  if (!littlefsState.client) {
+    littlefsState.status = 'Load a LittleFS partition first.';
+    return;
+  }
+  if (littlefsState.readOnly) {
+    littlefsState.status = littlefsState.readOnlyReason || 'LittleFS is read-only.';
+    return;
+  }
+  if (!littlefsState.dirty) {
+    littlefsState.status = 'No staged changes to save.';
+    return;
+  }
+  if (!hasLittlefsBackup()) {
+    littlefsState.status = 'Download a LittleFS backup before saving (one backup per session is enough).';
+    return;
+  }
+  const partition = littlefsSelectedPartition.value;
+  if (!partition) {
+    littlefsState.status = 'Select a LittleFS partition.';
+    return;
+  }
+  const diff = computeLittlefsDiff();
+  const summaryParts = [];
+  if (diff.added.length) summaryParts.push(`Added: ${diff.added.join(', ')}`);
+  if (diff.modified.length) summaryParts.push(`Modified: ${diff.modified.join(', ')}`);
+  if (diff.removed.length) summaryParts.push(`Removed: ${diff.removed.join(', ')}`);
+  const summary =
+    summaryParts.length > 0
+      ? summaryParts.join('\n')
+      : 'No file-level changes detected (still writing updated image).';
+  const confirmed = await showConfirmation({
+    title: 'Write LittleFS to Flash',
+    message: `${summary}\n\nWrite these changes to flash now?`,
+    confirmText: 'Save to Flash',
+    destructive: true,
+  });
+  if (!confirmed) return;
+  try {
+    littlefsState.saving = true;
+    maintenanceBusy.value = true;
+    littlefsSaveDialog.visible = true;
+    const image = littlefsState.client.toImage();
+    if (image.length > partition.size) {
+      throw new Error('LittleFS image exceeds partition size.');
+    }
+    await writeFilesystemImage(partition, image, {
+      label: 'LittleFS',
+      state: littlefsState,
+      onProgress: progress => {
+        littlefsSaveDialog.value = progress.value ?? 0;
+        littlefsSaveDialog.label = progress.label || 'Writing LittleFS image...';
+      },
+    });
+    littlefsState.dirty = false;
+    littlefsState.status = 'LittleFS saved to flash.';
+    appendLog('LittleFS partition updated on flash.', '[debug]');
+    await loadLittlefsPartition(partition);
+  } catch (error) {
+    littlefsState.error = formatErrorMessage(error);
+    littlefsState.status = 'LittleFS save failed.';
+  } finally {
+    littlefsState.saving = false;
+    maintenanceBusy.value = false;
+    littlefsSaveDialog.visible = false;
+    littlefsSaveDialog.value = 0;
+    littlefsSaveDialog.label = 'Saving LittleFS...';
+  }
+}
+
+function handleLittlefsDownloadFile(name) {
+  if (name) {
+    littlefsState.status = `Downloading "${name}" is not available yet. Use Backup to export the entire image.`;
+  } else {
+    littlefsState.status = 'Per-file download is not available for LittleFS yet. Use Backup to export the image.';
+  }
+}
+
+function handleLittlefsView(name) {
+  if (name) {
+    littlefsState.status = `Preview for "${name}" is not available for LittleFS yet.`;
+  } else {
+    littlefsState.status = 'Preview is not available for LittleFS yet.';
+  }
+}
+
 function buildFactGroups(facts) {
   const groups = [];
   const assigned = new Set();
@@ -823,6 +1370,46 @@ function updateSpiffsUsage() {
   }
 }
 
+function resetLittlefsState() {
+  littlefsState.selectedId = null;
+  littlefsState.client = null;
+  littlefsState.files = [];
+  littlefsState.status = 'Load a LittleFS partition to begin.';
+  littlefsState.loading = false;
+  littlefsState.busy = false;
+  littlefsState.saving = false;
+  littlefsState.error = null;
+  littlefsState.readOnly = false;
+  littlefsState.readOnlyReason = '';
+  littlefsState.dirty = false;
+  littlefsState.backupDone = false;
+  littlefsState.sessionBackupDone = false;
+  littlefsState.baselineFiles = [];
+  littlefsState.usage = {
+    capacityBytes: 0,
+    usedBytes: 0,
+    freeBytes: 0,
+  };
+  littlefsState.uploadBlocked = false;
+  littlefsState.uploadBlockedReason = '';
+  littlefsState.blockSize = 0;
+  littlefsState.blockCount = 0;
+}
+
+function updateLittlefsUsage(partition = littlefsSelectedPartition.value) {
+  const partitionSize = partition?.size ?? 0;
+  const capacityBytes =
+    littlefsState.blockSize && littlefsState.blockCount
+      ? littlefsState.blockSize * littlefsState.blockCount
+      : partitionSize;
+  const usedBytes = littlefsState.files.reduce((sum, file) => sum + (file.size ?? 0), 0);
+  littlefsState.usage = {
+    capacityBytes,
+    usedBytes,
+    freeBytes: Math.max(capacityBytes - usedBytes, 0),
+  };
+}
+
 function resolveSpiffsViewInfo(name = '') {
   if (!name) return null;
   const dotIndex = name.lastIndexOf('.');
@@ -933,8 +1520,12 @@ function markSpiffsDirty(message) {
 }
 
 function computeSpiffsDiff() {
-  const baselineMap = new Map(spiffsState.baselineFiles.map(file => [file.name, file.size]));
-  const currentMap = new Map(spiffsState.files.map(file => [file.name, file.size]));
+  return computeFileDiff(spiffsState.baselineFiles, spiffsState.files);
+}
+
+function computeFileDiff(baselineFiles = [], currentFiles = []) {
+  const baselineMap = new Map(baselineFiles.map(file => [file.name, file.size]));
+  const currentMap = new Map(currentFiles.map(file => [file.name, file.size]));
   const added = [];
   const removed = [];
   const modified = [];
@@ -953,6 +1544,10 @@ function computeSpiffsDiff() {
     }
   }
   return { added, removed, modified };
+}
+
+function computeLittlefsDiff() {
+  return computeFileDiff(littlefsState.baselineFiles, littlefsState.files);
 }
 
 async function handleSelectSpiffsPartition(partitionId) {
@@ -1043,9 +1638,13 @@ async function handleSpiffsRestore(file) {
     spiffsRestoreDialog.visible = true;
     spiffsRestoreDialog.value = 0;
     spiffsRestoreDialog.label = 'Writing SPIFFS image...';
-    await writeSpiffsImage(partition, buffer, progress => {
-      spiffsRestoreDialog.value = progress.value ?? 0;
-      spiffsRestoreDialog.label = progress.label || 'Writing SPIFFS image...';
+    await writeFilesystemImage(partition, buffer, {
+      label: 'SPIFFS',
+      state: spiffsState,
+      onProgress: progress => {
+        spiffsRestoreDialog.value = progress.value ?? 0;
+        spiffsRestoreDialog.label = progress.label || 'Writing SPIFFS image...';
+      },
     });
     spiffsState.status = 'SPIFFS image restored.';
     spiffsState.backupDone = true;
@@ -1320,9 +1919,13 @@ async function handleSpiffsSave() {
     if (image.length > partition.size) {
       throw new Error('SPIFFS image exceeds partition size.');
     }
-    await writeSpiffsImage(partition, image, progress => {
-      spiffsSaveDialog.value = progress.value ?? 0;
-      spiffsSaveDialog.label = progress.label || 'Writing SPIFFS image...';
+    await writeFilesystemImage(partition, image, {
+      label: 'SPIFFS',
+      state: spiffsState,
+      onProgress: progress => {
+        spiffsSaveDialog.value = progress.value ?? 0;
+        spiffsSaveDialog.label = progress.label || 'Writing SPIFFS image...';
+      },
     });
     spiffsState.dirty = false;
     spiffsState.status = 'SPIFFS saved to flash.';
@@ -1340,7 +1943,8 @@ async function handleSpiffsSave() {
   }
 }
 
-async function writeSpiffsImage(partition, image, onProgress) {
+async function writeFilesystemImage(partition, image, options = {}) {
+  const { onProgress, label = 'filesystem', state } = options ?? {};
   if (!loader.value) {
     throw new Error('Loader unavailable.');
   }
@@ -1355,11 +1959,13 @@ async function writeSpiffsImage(partition, image, onProgress) {
     compress: true,
     reportProgress: (_fileIndex, written, total) => {
       const progressValue = total ? Math.min(100, Math.floor((written / total) * 100)) : 0;
-      const label = `Writing SPIFFS... ${written.toLocaleString()} / ${total.toLocaleString()} bytes`;
-      spiffsState.status = label;
+      const statusLabel = `Writing ${label}... ${written.toLocaleString()} / ${total.toLocaleString()} bytes`;
+      if (state) {
+        state.status = statusLabel;
+      }
       onProgress?.({
         value: progressValue,
-        label,
+        label: statusLabel,
         written,
         total,
       });
@@ -1576,6 +2182,26 @@ const spiffsUploadErrorDialog = reactive({
   visible: false,
   message: '',
 });
+const littlefsBackupDialog = reactive({
+  visible: false,
+  value: 0,
+  label: '',
+});
+const littlefsLoadingDialog = reactive({
+  visible: false,
+  value: 0,
+  label: 'Reading LittleFS...',
+});
+const littlefsSaveDialog = reactive({
+  visible: false,
+  value: 0,
+  label: 'Saving LittleFS...',
+});
+const littlefsRestoreDialog = reactive({
+  visible: false,
+  value: 0,
+  label: 'Restoring LittleFS image...',
+});
 const spiffsPartitions = computed(() =>
   partitionTable.value
     .filter(
@@ -1621,6 +2247,35 @@ const littleFsPartitions = computed(() =>
     })),
 );
 const littleFsAvailable = computed(() => littleFsPartitions.value.length > 0);
+const littlefsState = reactive({
+  selectedId: null,
+  client: null,
+  files: [],
+  status: 'Load a LittleFS partition to begin.',
+  loading: false,
+  busy: false,
+  saving: false,
+  error: null,
+  readOnly: false,
+  readOnlyReason: '',
+  dirty: false,
+  backupDone: false,
+  sessionBackupDone: false,
+  usage: {
+    capacityBytes: 0,
+    usedBytes: 0,
+    freeBytes: 0,
+  },
+  baselineFiles: [],
+  uploadBlocked: false,
+  uploadBlockedReason: '',
+  blockSize: LITTLEFS_DEFAULT_BLOCK_SIZE,
+  blockCount: 0,
+});
+const littlefsSelectedPartition = computed(() =>
+  littleFsPartitions.value.find(partition => partition.id === littlefsState.selectedId) ?? null,
+);
+const hasLittlefsPartitionSelected = computed(() => Boolean(littlefsSelectedPartition.value));
 const logBuffer = ref('');
 const monitorText = ref('');
 const monitorActive = ref(false);
@@ -1846,6 +2501,9 @@ watch(activeTab, value => {
   if (value === 'spiffs') {
     void ensureSpiffsReady();
   }
+  if (value === 'littlefs') {
+    void ensureLittlefsReady();
+  }
 });
 
 watch(
@@ -1857,6 +2515,7 @@ watch(
     }
     if (!connected.value) {
       resetSpiffsState();
+      resetLittlefsState();
       return;
     }
     if (spiffsPartitions.value.length) {
@@ -1868,6 +2527,16 @@ watch(
       }
     } else {
       resetSpiffsState();
+    }
+    if (littleFsPartitions.value.length) {
+      if (!littleFsPartitions.value.some(partition => partition.id === littlefsState.selectedId)) {
+        littlefsState.selectedId = littleFsPartitions.value[0].id;
+      }
+      if (activeTab.value === 'littlefs') {
+        void ensureLittlefsReady();
+      }
+    } else {
+      resetLittlefsState();
     }
   }
 );
@@ -3042,6 +3711,8 @@ async function disconnectTransport() {
     resetMaintenanceState();
     resetSpiffsState();
     spiffsState.selectedId = null;
+    resetLittlefsState();
+    littlefsState.selectedId = null;
     currentBaud.value = DEFAULT_FLASH_BAUD;
     baudChangeBusy.value = false;
   }

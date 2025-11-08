@@ -18,13 +18,13 @@
       border="start"
       class="mb-3"
     >
-      SPIFFS is in read-only mode. {{ readOnlyReason || 'Changes cannot be saved.' }}
+      {{ readOnlyMessage }}
     </v-alert>
 
     <v-card class="mb-4" variant="tonal">
       <v-card-title class="text-subtitle-1">
         <v-icon start size="18">mdi-folder-wrench</v-icon>
-        SPIFFS Partition
+        {{ partitionHeading }}
       </v-card-title>
       <v-card-text class="d-flex flex-column gap-4">
         <v-select
@@ -167,7 +167,7 @@
           border="start"
           class="mt-4"
         >
-          No files detected. Upload or restore a SPIFFS image to begin.
+          {{ emptyMessage }}
         </v-alert>
         <template v-else>
           <div class="spiffs-table__toolbar mt-4">
@@ -217,7 +217,7 @@
               size="small"
               variant="text"
               color="info"
-              v-if="isViewable(unwrapItem(item).name)"
+              v-if="enablePreview && isViewable(unwrapItem(item).name)"
               :disabled="loading || busy || saving || readOnly"
               @click="emit('view-file', unwrapItem(item).name)"
             >
@@ -228,6 +228,7 @@
               size="small"
               variant="text"
               color="primary"
+              v-if="enableDownload"
               :disabled="loading || busy || saving || readOnly"
               @click="emit('download-file', unwrapItem(item).name)"
             >
@@ -320,6 +321,26 @@ const props = defineProps({
   getFilePreviewInfo: {
     type: Function,
     default: null,
+  },
+  fsLabel: {
+    type: String,
+    default: 'SPIFFS',
+  },
+  partitionTitle: {
+    type: String,
+    default: '',
+  },
+  emptyStateMessage: {
+    type: String,
+    default: '',
+  },
+  enablePreview: {
+    type: Boolean,
+    default: true,
+  },
+  enableDownload: {
+    type: Boolean,
+    default: true,
   },
 });
 
@@ -729,3 +750,12 @@ function previewLabel(name) {
   text-transform: none;
 }
 </style>
+const fsLabel = computed(() => (props.fsLabel && props.fsLabel.trim()) || 'SPIFFS');
+const partitionHeading = computed(() => props.partitionTitle?.trim() || `${fsLabel.value} Partition`);
+const emptyMessage = computed(
+  () => props.emptyStateMessage?.trim() || `No files detected. Upload or restore a ${fsLabel.value} image to begin.`,
+);
+const readOnlyMessage = computed(() => {
+  const detail = props.readOnlyReason?.trim();
+  return `${fsLabel.value} is in read-only mode. ${detail || 'Changes cannot be saved.'}`;
+});
