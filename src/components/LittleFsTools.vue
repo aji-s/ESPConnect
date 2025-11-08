@@ -196,6 +196,7 @@ const state = reactive({
   blockSize: DEFAULT_BLOCK_SIZE,
   blockCount: 1,
   partitionId: null as PartitionOption['id'] | null,
+  currentPartitionKey: null as PartitionOption['id'] | null,
   backupDone: false,
 });
 
@@ -232,7 +233,8 @@ watch(
     }
     state.blockCount = Math.max(1, Math.floor(partition.size / state.blockSize));
     resetInstanceState();
-    state.status = `Partition "${partition.label}" selected. Click Initialize to work with LittleFS.`;
+    state.status = `Partition "${partition.label}" selected. Loading LittleFS...`;
+    autoInitialize();
   },
   { immediate: true },
 );
@@ -321,10 +323,22 @@ function resetInstanceState(hard = false) {
   state.fs = null;
   state.files = [];
   state.backupDone = false;
+  state.currentPartitionKey = null;
 }
 
 function selectPartition(id: PartitionOption['id']) {
   state.partitionId = id;
+}
+
+async function autoInitialize() {
+  const partition = selectedPartition.value;
+  if (!partition) return;
+  if (state.ready && state.currentPartitionKey === partition.id) {
+    state.status = `LittleFS ready for partition "${partition.label}".`;
+    await refreshListing();
+    return;
+  }
+  await initializeLittleFs();
 }
 
 async function loadFactory() {
@@ -351,12 +365,13 @@ async function initializeLittleFs() {
     const blockCount = Math.max(1, Math.floor(partition.size / state.blockSize));
     state.blockCount = blockCount;
     state.fs = await factory({
-      formatOnInit: true,
+      formatOnInit: false,
       blockSize: state.blockSize,
-      blockCount: blockCount,
+      blockCount,
     });
     state.ready = true;
     state.status = `LittleFS ready for partition "${partition.label}".`;
+    state.currentPartitionKey = partition.id;
     await refreshListing();
   } catch (error) {
     console.error('LittleFS init failed', error);
