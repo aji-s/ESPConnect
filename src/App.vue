@@ -510,6 +510,7 @@ const SPIFFS_AUDIO_MIME_MAP = {
 };
 const SPIFFS_VIEWER_MAX_BYTES = 2 * 1024 * 1024; // 2 MB previews
 const SPIFFS_VIEWER_DECODER = new TextDecoder('utf-8', { fatal: false, ignoreBOM: true });
+const SPIFFS_MAX_FILENAME_LENGTH = 31; // Default ESP32 SPIFFS objNameLength (32) minus null terminator
 const LITTLEFS_DEFAULT_BLOCK_SIZE = 4096;
 const LITTLEFS_BLOCK_SIZE_CANDIDATES = [4096, 2048, 1024, 512];
 const APP_BASE_URL = (import.meta.env?.BASE_URL ?? '/').replace(/\/+$/, '/') || '/';
@@ -1813,6 +1814,14 @@ function handleSpiffsUploadSelection(file) {
   if (!targetName) {
     spiffsState.uploadBlocked = true;
     spiffsState.uploadBlockedReason = 'Selected file must have a name.';
+    showUploadError('Selected file must have a name.');
+    return;
+  }
+  if (targetName.length > SPIFFS_MAX_FILENAME_LENGTH) {
+    const message = `SPIFFS filenames are limited to ${SPIFFS_MAX_FILENAME_LENGTH} characters.`;
+    spiffsState.uploadBlocked = true;
+    spiffsState.uploadBlockedReason = message;
+    showUploadError(message);
     return;
   }
   if (
@@ -1950,14 +1959,17 @@ async function handleSpiffsUpload({ file }) {
     spiffsState.uploadBlockedReason = '';
   } catch (error) {
     const isSpaceError = typeof error?.message === 'string' && error.message.includes('Not enough SPIFFS space');
+    const isNameTooLong = typeof error?.message === 'string' && error.message.includes('File name too long');
     const friendly = isSpaceError
       ? 'Not enough SPIFFS space for this file. Delete files or format the partition, then try again.'
       : formatErrorMessage(error);
-    spiffsState.status = friendly || 'SPIFFS upload failed.';
-    if (!isSpaceError) {
+    if (!isNameTooLong) {
+      spiffsState.status = friendly || 'SPIFFS upload failed.';
+    }
+    if (!isSpaceError && !isNameTooLong) {
       spiffsState.error = friendly;
     }
-    if (isSpaceError) {
+    if (isSpaceError || isNameTooLong) {
       showUploadError(friendly);
     }
   } finally {
