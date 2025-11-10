@@ -5781,18 +5781,37 @@ async function handleDownloadFlash(payload = { mode: 'manual' }) {
         flashReadStatus.value = 'No partitions available to download.';
         return;
       }
+      downloadProgress.visible = true;
+      downloadProgress.value = 0;
+      downloadProgress.label = `Preparing ${partitions.length} partition download${partitions.length === 1 ? '' : 's'}...`;
       let completed = 0;
       for (const option of partitions) {
-        completed += 1;
-        flashReadStatusType.value = 'info';
-        flashReadStatus.value =
-          'Downloading partition ' + completed + ' of ' + partitions.length + ': ' + option.baseLabel + '...';
+        const partitionIndex = completed;
+        const totalPartitions = partitions.length;
+        const partitionFraction = 1 / totalPartitions;
         await downloadFlashRegion(option.offset, option.size, {
           label: option.baseLabel,
           fileName: sanitizeFileName(option.baseLabel + '_' + option.offsetHex, 'partition'),
           suppressStatus: true,
+          onProgress: progress => {
+            const partValue = Math.min(100, Math.max(0, progress?.value ?? 0));
+            const overall = Math.min(100, (partitionIndex + partValue / 100) * partitionFraction * 100);
+            downloadProgress.visible = true;
+            downloadProgress.value = overall;
+            const progressLabel = progress?.label
+              ? progress.label
+              : `${partValue.toFixed(0)}%`;
+            downloadProgress.label = `Partition ${partitionIndex + 1} of ${totalPartitions}: ${option.baseLabel} - ${progressLabel}`;
+          },
         });
+        completed += 1;
+        downloadProgress.value = Math.min(100, (completed / totalPartitions) * 100);
+        downloadProgress.label = `Partition ${completed} of ${totalPartitions}: ${option.baseLabel} complete.`;
       }
+      downloadProgress.value = 100;
+      downloadProgress.label =
+        'Downloaded ' + partitions.length + ' partition' + (partitions.length === 1 ? '' : 's') + '.';
+      downloadProgress.visible = false;
       flashReadStatusType.value = 'success';
       flashReadStatus.value =
         'Downloaded ' + partitions.length + ' partition' + (partitions.length === 1 ? '' : 's') + '.';
