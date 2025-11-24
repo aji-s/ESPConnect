@@ -55,7 +55,7 @@ ESPConnect is a browser-based control center for ESP32- and ESP8266-class boards
 - Cancelling a flash or download pauses safely. Simply run it again when you’re ready.  
 
 ## Privacy & Security
-ESPConnect talks to your hardware entirely inside the browser. Firmware files, backups, and diagnostics stay on your machine unless you choose to share them. Always flash firmware from trusted sources.
+ESPConnect runs fully in your browser—there is no backend, account, or telemetry. Firmware files, backups, and diagnostics stay local and only move when you download them yourself. Always flash firmware from trusted sources.
 
 ## License
 ESPConnect is released under the MIT License. See [LICENSE](LICENSE) for the full text.
