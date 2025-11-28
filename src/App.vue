@@ -566,7 +566,7 @@ import DisconnectedState from './components/DisconnectedState.vue';
 import registerGuides from './data/register-guides.json';
 import { InMemorySpiffsClient } from './utils/spiffs/spiffsClient';
 
-const APP_VERSION = '1.02';
+const APP_VERSION = '1.03';
 const TIMEOUT_CONNECT = 1000;
 const SUPPORTED_VENDORS = [
   { usbVendorId: 0x303a },
