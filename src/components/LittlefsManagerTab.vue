@@ -152,7 +152,8 @@
               <v-icon size="16" class="me-2">
                 {{ item.type === 'dir' ? 'mdi-folder' : 'mdi-file' }}
               </v-icon>
-              <span class="text-truncate" :class="{ 'text-primary': item.type === 'dir' }"
+              <span class="text-truncate"
+                :class="{ 'filesystem-link': item.type === 'dir', 'text-primary': item.type === 'dir' }"
                 @click="item.type === 'dir' && emit('navigate', item.path)">
                 {{ item.name }}
               </span>
@@ -479,6 +480,11 @@ function promptNewFolder() {
   align-items: center;
   gap: 6px;
   max-width: 320px;
+}
+
+.filesystem-link {
+  cursor: pointer;
+  text-decoration: underline;
 }
 
 .filesystem-dropzone__hint {
