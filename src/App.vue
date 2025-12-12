@@ -3183,6 +3183,12 @@ type ReadFlashOptions = {
   onProgress?: (progress: WriteFilesystemProgress) => void;
 };
 
+type SetBaudOptions = {
+  remember?: boolean;
+  log?: boolean;
+  updateDropdown?: boolean;
+};
+
 // Write a filesystem image to flash with progress callbacks.
 async function writeFilesystemImage(partition: any, image: Uint8Array | ArrayBuffer, options: WriteFilesystemOptions = {}) {
   const { onProgress, label = 'filesystem', state, compress = true } = options;
@@ -3699,9 +3705,9 @@ function toggleTheme() {
 }
 
 // Change the connection baud rate and optionally persist the selection.
-async function setConnectionBaud(targetBaud, options = {}) {
+async function setConnectionBaud(targetBaud: string | number, options: SetBaudOptions = {}) {
   const { remember = true, log = true, updateDropdown = true } = options;
-  const parsed = Number.parseInt(targetBaud, 10);
+  const parsed = Number.parseInt(String(targetBaud), 10);
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return;
   }
