@@ -3435,7 +3435,7 @@ const flashInProgress = ref(false);
 const flashProgress = ref(0);
 const flashProgressDialog = reactive({ visible: false, value: 0, label: '' });
 const flashCancelRequested = ref(false);
-const selectedBaud = ref(String(DEFAULT_FLASH_BAUD));
+const selectedBaud = ref<number>(DEFAULT_FLASH_BAUD);
 const baudrateOptions = SUPPORTED_BAUDRATES;
 const flashOffset = ref('0x0');
 const eraseFlash = ref(false);
@@ -3781,7 +3781,7 @@ async function setConnectionBaud(targetBaud: string | number, options: SetBaudOp
   if (updateDropdown) {
     const previousSuspendState = suspendBaudWatcher;
     suspendBaudWatcher = true;
-    selectedBaud.value = String(parsed);
+    selectedBaud.value = parsed;
     queueMicrotask(() => {
       suspendBaudWatcher = previousSuspendState;
     });
@@ -3798,7 +3798,7 @@ watch(selectedBaud, async (value, oldValue) => {
   if (value === oldValue) {
     return;
   }
-  const parsed = Number.parseInt(value, 10);
+  const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed <= 0) {
     appendLog('Ignoring invalid baud selection: ' + value, '[ESPConnect-Warn]');
     if (oldValue != null) {
@@ -3811,7 +3811,7 @@ watch(selectedBaud, async (value, oldValue) => {
     } else {
       const previousSuspendState = suspendBaudWatcher;
       suspendBaudWatcher = true;
-      selectedBaud.value = String(currentBaud.value);
+      selectedBaud.value = currentBaud.value;
       queueMicrotask(() => {
         suspendBaudWatcher = previousSuspendState;
       });
@@ -3834,7 +3834,7 @@ watch(selectedBaud, async (value, oldValue) => {
     );
     const previousSuspendState = suspendBaudWatcher;
     suspendBaudWatcher = true;
-    selectedBaud.value = String(currentBaud.value);
+    selectedBaud.value = currentBaud.value;
     queueMicrotask(() => {
       suspendBaudWatcher = previousSuspendState;
     });
@@ -3845,7 +3845,7 @@ watch(selectedBaud, async (value, oldValue) => {
   } catch (error) {
     const previousSuspendState = suspendBaudWatcher;
     suspendBaudWatcher = true;
-    selectedBaud.value = String(currentBaud.value);
+    selectedBaud.value = currentBaud.value;
     queueMicrotask(() => {
       suspendBaudWatcher = previousSuspendState;
     });
@@ -4957,7 +4957,7 @@ function appendMonitorChunk(bytes) {
       if (!monitorNoiseWarned && monitorNoiseChunks >= 3 && !monitorError.value) {
         const activeBaud =
           transport.value?.baudrate ||
-          Number.parseInt(selectedBaud.value, 10) ||
+          selectedBaud.value ||
           DEFAULT_ROM_BAUD;
         monitorError.value =
           `Monitor data looks binary. Check that the device UART baud matches the selected ` +
@@ -5230,7 +5230,7 @@ async function connect() {
     connectDialogTimer = setTimeout(() => {
       connectDialog.visible = true;
     }, TIMEOUT_CONNECT);
-    let desiredBaud = Number.parseInt(selectedBaud.value, 10) || DEFAULT_FLASH_BAUD;
+    let desiredBaud = selectedBaud.value || DEFAULT_FLASH_BAUD;
     const connectBaud_defaultROM = DEFAULT_ROM_BAUD;
     lastFlashBaud.value = desiredBaud;
 
@@ -5245,7 +5245,7 @@ async function connect() {
       lastFlashBaud.value = desiredBaud;
       const previousSuspendState = suspendBaudWatcher;
       suspendBaudWatcher = true;
-      selectedBaud.value = String(desiredBaud);
+      selectedBaud.value = desiredBaud;
       queueMicrotask(() => {
         suspendBaudWatcher = previousSuspendState;
       });
@@ -5285,7 +5285,7 @@ async function connect() {
     transport.value.baudrate = currentBaud.value;
     const previousSuspendState = suspendBaudWatcher;
     suspendBaudWatcher = true;
-    selectedBaud.value = String(currentBaud.value);
+    selectedBaud.value = currentBaud.value;
     queueMicrotask(() => {
       suspendBaudWatcher = previousSuspendState;
     });
@@ -5606,7 +5606,7 @@ async function flashFirmware() {
   const activeBaudRaw =
     transport.value?.baudrate ||
     currentBaud.value ||
-    Number.parseInt(selectedBaud.value, 10) ||
+    selectedBaud.value ||
     DEFAULT_ROM_BAUD;
   const flashBaud = Number.isFinite(activeBaudRaw) ? activeBaudRaw : DEFAULT_ROM_BAUD;
   const flashBaudLabel = flashBaud.toLocaleString() + ' bps';
@@ -5869,7 +5869,7 @@ async function downloadFlashRegion(offset: number, length: number, options: Down
   const activeBaudRaw =
     transport.value?.baudrate ||
     currentBaud.value ||
-    Number.parseInt(selectedBaud.value, 10) ||
+    selectedBaud.value ||
     DEFAULT_ROM_BAUD;
   const baudNumber = Number.isFinite(activeBaudRaw) ? activeBaudRaw : DEFAULT_ROM_BAUD;
   const baudLabel = baudNumber.toLocaleString() + ' bps';
