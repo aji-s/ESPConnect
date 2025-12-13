@@ -631,7 +631,7 @@ import { InMemorySpiffsClient } from './utils/spiffs/spiffsClient';
 import { useFatfsManager, useLittlefsManager, useSpiffsManager } from './composables/useFilesystemManagers';
 import { useDialogs } from './composables/useDialogs';
 import { readPartitionTable } from './utils/partitions';
-import { createEsptoolClient, requestSerialPort } from './services/esptoolClient';
+import { createEsptoolClient, requestSerialPort, type CompatibleLoader } from './services/esptoolClient';
 import {
   SPIFFS_AUDIO_EXTENSIONS,
   SPIFFS_AUDIO_MIME_MAP,
@@ -3619,7 +3619,7 @@ const confirmationDialog = reactive({
 let confirmationResolver = null;
 const currentPort = ref(null);
 const transport = ref(null);
-const loader = ref(null);
+const loader = ref<CompatibleLoader | null>(null);
 const firmwareBuffer = ref(null);
 const firmwareName = ref('');
 const chipDetails = ref(null);
